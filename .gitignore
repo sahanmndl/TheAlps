@@ -1,0 +1,13 @@
+# Environment
+.env
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Alembic specific
+alembic/__pycache__/
+alembic/versions/__pycache__/
