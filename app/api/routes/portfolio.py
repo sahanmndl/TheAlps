@@ -39,7 +39,7 @@ async def analyze_portfolio_genai(db: Session = Depends(get_db), current_user: U
         openai_api = OpenAIAPI()
         portfolio_metrics = PortfolioMetrics(ism_api, openai_api)
 
-        analysis = await portfolio_metrics.analyze_portfolio_genai(holdings)
+        analysis = await portfolio_metrics.analyze_portfolio_genai(holdings=holdings, user_id=current_user.id)
 
         return {"analysis": analysis}
     except Exception as e:
@@ -71,7 +71,7 @@ async def analyze_portfolio_risk_genai(db: Session = Depends(get_db), current_us
         openai_api = OpenAIAPI()
         portfolio_metrics = PortfolioMetrics(ism_api, openai_api)
 
-        analysis = await portfolio_metrics.analyze_portfolio_risk_genai(holdings)
+        analysis = await portfolio_metrics.analyze_portfolio_risk_genai(holdings=holdings, user_id=current_user.id)
 
         return {"analysis": analysis}
     except Exception as e:

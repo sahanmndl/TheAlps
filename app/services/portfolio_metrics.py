@@ -42,8 +42,8 @@ class PortfolioMetrics:
                         continue
                     
                     cache_key = f"stock_details:{symbol}"
-                    print(f"Caching data for {cache_key}")
                     await self.cache.set(cache_key, result.model_dump(by_alias=True), expire_minutes=5)
+                    print(f"Cached stock details for {cache_key}")
                     stock_details_map[symbol] = result
 
             return stock_details_map
@@ -141,13 +141,21 @@ class PortfolioMetrics:
         except Exception as e:
             raise RuntimeError(f"Error calculating current value and P&L: {str(e)}")
         
-    async def analyze_portfolio_genai(self, holdings: List[Holding]) -> str:
+    async def analyze_portfolio_genai(self, holdings: List[Holding], user_id: int = None) -> str:
         """
         Analyze the portfolio using a generative AI model.
         """
         try:
             if not holdings:
                 return "No holdings to analyze."
+            
+            if user_id:
+                cache_key = f"portfolio_briefing_genai:{user_id}"
+                cached_portfolio_briefing = await self.cache.get(cache_key)
+                if cached_portfolio_briefing:
+                    print(f"Cache hit for {cache_key}")
+                    return cached_portfolio_briefing
+                print(f"Cache miss for {cache_key}")
 
             holdings_metrics_list, portfolio_summary, _ = await self.calculate_current_value_and_pnl(holdings)
 
@@ -170,9 +178,13 @@ class PortfolioMetrics:
             Return in markdown format.
             """
 
-            analysis = self.openai_api.generate_text(prompt)
+            briefing = self.openai_api.generate_text(prompt)
 
-            return analysis
+            if user_id:
+                await self.cache.set(cache_key, briefing, expire_minutes=20)
+                print(f"Cached briefing for {cache_key}")
+
+            return briefing
         except Exception as e:
             raise RuntimeError(f"Error analyzing portfolio: {str(e)}")
         
@@ -264,13 +276,21 @@ class PortfolioMetrics:
         except Exception as e:
             raise RuntimeError(f"Error calculating risk metrics: {str(e)}")
         
-    async def analyze_portfolio_risk_genai(self, holdings: List[Holding]) -> str:
+    async def analyze_portfolio_risk_genai(self, holdings: List[Holding], user_id: int = None) -> str:
         """
         Analyze the portfolio risk using a generative AI model.
         """
         try:
             if not holdings:
                 return "No holdings to analyze."
+            
+            if user_id:
+                cache_key = f"portfolio_risk_analysis_genai:{user_id}"
+                cached_portfolio_risk_analysis = await self.cache.get(cache_key)
+                if cached_portfolio_risk_analysis:
+                    print(f"Cache hit for {cache_key}")
+                    return cached_portfolio_risk_analysis
+                print(f"Cache miss for {cache_key}")
 
             stock_risk_metrics_list, portfolio_risk_metrics = await self.calculate_risk_metrics(holdings)
 
@@ -293,8 +313,12 @@ class PortfolioMetrics:
             Return in markdown format.
             """
 
-            analysis = self.openai_api.generate_text(prompt)
+            risk_analysis = self.openai_api.generate_text(prompt)
 
-            return analysis
+            if user_id:
+                await self.cache.set(cache_key, risk_analysis, expire_minutes=20)
+                print(f"Cached risk analysis for {cache_key}")
+
+            return risk_analysis
         except Exception as e:
             raise RuntimeError(f"Error analyzing portfolio risk: {str(e)}")
