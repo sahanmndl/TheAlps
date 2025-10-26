@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_PREFIX: str = "Bearer"
     INDIAN_STOCK_MARKET_API_KEY: str
     OPENAI_API_KEY: str
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_USERNAME: str
+    REDIS_PASSWORD: str
 
     class Config:
         env_file = ".env"

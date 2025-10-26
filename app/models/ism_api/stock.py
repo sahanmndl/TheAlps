@@ -253,3 +253,5 @@ class ISMStockDetailsResponse(BaseModel):
     class Config:
         from_attributes = True
         populate_by_name = True
+        alias_generator = None  # Prevents snake_case conversion
+        json_encoders = {}

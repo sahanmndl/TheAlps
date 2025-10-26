@@ -21,7 +21,7 @@ async def get_portfolio_current_value_and_pnl(db: Session = Depends(get_db), cur
         ism_api = ISMApi()
         portfolio_metrics = PortfolioMetrics(ism_api)
         
-        holding_metrics, portfolio_summary = await portfolio_metrics.calculate_current_value_and_pnl(holdings)
+        holding_metrics, portfolio_summary, _ = await portfolio_metrics.calculate_current_value_and_pnl(holdings)
 
         return PortfolioMetricsResponse(
             holding_metrics=holding_metrics,

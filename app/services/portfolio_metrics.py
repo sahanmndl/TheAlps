@@ -1,6 +1,7 @@
 import asyncio
 from collections import defaultdict
 from decimal import Decimal
+from app.cache.redis import RedisService
 from app.models.ism_api.stock import ISMStockDetailsResponse
 from app.models.portfolio_metrics import HoldingMetrics, PortfolioRiskMetrics, PortfolioSummary, SectorAllocation, StockRiskMetrics
 from app.schemas.holding import Holding
@@ -14,24 +15,42 @@ class PortfolioMetrics:
     def __init__(self, ism_api: ISMApi, openai_api: OpenAIAPI = None):
         self.ism_api = ism_api
         self.openai_api = openai_api
+        self.cache = RedisService()
 
     async def _fetch_stock_details(self, symbols: List[str]) -> Dict[str, ISMStockDetailsResponse]:
         try:
-            tasks = [self.ism_api.get_stock_details(symbol) for symbol in symbols]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            
             stock_details_map = {}
-            for symbol, result in zip(symbols, results):
-                if isinstance(result, Exception):
-                    print(f"Error fetching details for {symbol}: {str(result)}")
-                    continue
-                stock_details_map[symbol] = result
+            cache_miss_symbols = []
+
+            for symbol in symbols:
+                cache_key = f"stock_details:{symbol}"
+                cached_data = await self.cache.get(cache_key)
+                if cached_data:
+                    print(f"Cache hit for {cache_key}")
+                    stock_details_map[symbol] = ISMStockDetailsResponse(**cached_data)
+                else:
+                    print(f"Cache miss for {cache_key}")
+                    cache_miss_symbols.append(symbol)
+
+            if cache_miss_symbols:
+                tasks = [self.ism_api.get_stock_details(symbol) for symbol in cache_miss_symbols]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                
+                for symbol, result in zip(cache_miss_symbols, results):
+                    if isinstance(result, Exception):
+                        print(f"Error fetching details for {symbol}: {str(result)}")
+                        continue
+                    
+                    cache_key = f"stock_details:{symbol}"
+                    print(f"Caching data for {cache_key}")
+                    await self.cache.set(cache_key, result.model_dump(by_alias=True), expire_minutes=5)
+                    stock_details_map[symbol] = result
 
             return stock_details_map
         except Exception as e:
             raise RuntimeError(f"Error fetching stock details: {str(e)}")
 
-    async def calculate_current_value_and_pnl(self, holdings: List[Holding]) -> tuple[List[HoldingMetrics], PortfolioSummary]:
+    async def calculate_current_value_and_pnl(self, holdings: List[Holding]) -> tuple[List[HoldingMetrics], PortfolioSummary, Dict[str, ISMStockDetailsResponse]]:
         """
         Calculate current value and P&L for a list of holdings.
         """
@@ -43,7 +62,7 @@ class PortfolioMetrics:
                     total_pnl=0.0, 
                     total_return_pct=0.0,
                     sector_allocations=[]
-                )
+                ), {}
             
             symbols = list({holding.symbol for holding in holdings})
             stock_details_map = await self._fetch_stock_details(symbols)
@@ -118,7 +137,7 @@ class PortfolioMetrics:
                 sector_allocations=sector_allocations
             )
 
-            return holding_metrics_list, portfolio_summary
+            return holding_metrics_list, portfolio_summary, stock_details_map
         except Exception as e:
             raise RuntimeError(f"Error calculating current value and P&L: {str(e)}")
         
@@ -130,7 +149,7 @@ class PortfolioMetrics:
             if not holdings:
                 return "No holdings to analyze."
 
-            holdings_metrics_list, portfolio_summary = await self.calculate_current_value_and_pnl(holdings)
+            holdings_metrics_list, portfolio_summary, _ = await self.calculate_current_value_and_pnl(holdings)
 
             prompt = f"""
             You are a professional portfolio analyst for Indian stock markets. 
@@ -147,6 +166,8 @@ class PortfolioMetrics:
 
             pnl is profit and loss
             pct is percentage
+
+            Return in markdown format.
             """
 
             analysis = self.openai_api.generate_text(prompt)
@@ -202,10 +223,7 @@ class PortfolioMetrics:
                     sector_concentration=0.0
                 )
 
-            holding_metrics_list, portfolio_summary = await self.calculate_current_value_and_pnl(holdings)
-
-            symbols = [holding.symbol for holding in holdings]
-            stock_details_map = await self._fetch_stock_details(symbols)
+            holding_metrics_list, portfolio_summary, stock_details_map = await self.calculate_current_value_and_pnl(holdings)
 
             portfolio_beta = Decimal('0')
             stock_risk_metrics_list: List[StockRiskMetrics] = []
@@ -271,6 +289,8 @@ class PortfolioMetrics:
 
             pnl is profit and loss
             pct is percentage
+
+            Return in markdown format.
             """
 
             analysis = self.openai_api.generate_text(prompt)
