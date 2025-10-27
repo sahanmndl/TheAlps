@@ -9,6 +9,7 @@ from app.services.ism_api import ISMApi
 from typing import Dict, List, Tuple
 
 from app.services.openai_api import OpenAIAPI
+from app.utils.helper_functions import HelperFunctions
 
 
 class PortfolioMetrics:
@@ -16,6 +17,7 @@ class PortfolioMetrics:
         self.ism_api = ism_api
         self.openai_api = openai_api
         self.cache = RedisService()
+        self.helper_functions = HelperFunctions(ism_api)
 
     async def _fetch_stock_details(self, symbols: List[str]) -> Dict[str, ISMStockDetailsResponse]:
         try:
@@ -43,6 +45,7 @@ class PortfolioMetrics:
                     
                     cache_key = f"stock_details:{symbol}"
                     await self.cache.set(cache_key, result.model_dump(by_alias=True), expire_minutes=5)
+                    await self.helper_functions.cache_stock_specific_news(result.recent_news, symbol)
                     print(f"Cached stock details for {cache_key}")
                     stock_details_map[symbol] = result
 
