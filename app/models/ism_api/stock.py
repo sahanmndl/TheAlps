@@ -204,27 +204,72 @@ class StockDetailsReusableData(BaseModel):
     mutual_fund_share_holding: Optional[ShareholdingCategory] = Field(None, alias="mutualFundShareHolding")
 
 class RecentNews(BaseModel):
-    id: str
+    id: str | int
     headline: str
-    intro: str
-    byline: str
+    intro: Optional[str] = None
+    byline: Optional[str] = None
+    date: Optional[str] = None
+    time_to_read: Optional[str | int] = Field(None, alias="timeToRead")
+    premium_story: Optional[str] = Field(None, alias="premiumStory")
+    section: Optional[str] = None
+    keywords: Optional[str] = None
+    url: Optional[str] = None
+    thumbnail_image: Optional[str] = Field(None, alias="thumbnailimage")
+    list_image: Optional[str] = Field(None, alias="listimage")
+    small_image: Optional[str] = Field(None, alias="smallimage")
+    big_image: Optional[str] = Field(None, alias="bigimage")
+    image_caption: Optional[str] = Field(None, alias="imagecaption")
+    image_621x414: Optional[str] = Field(None, alias="image_621x414")
+    image_222x148: Optional[str] = Field(None, alias="image_222x148")
+    slider_images: List = Field(default_factory=list, alias="sliderimages")
+    slider_videos: List = Field(default_factory=list, alias="slidervideos")
+    interactives: List = Field(default_factory=list)
+    body: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+
+class TrendingStock(BaseModel):
+    ticker_id: str = Field(alias="ticker_id")
+    company_name: str = Field(alias="company_name")
+    price: str
+    percent_change: str = Field(alias="percent_change")
+    net_change: str = Field(alias="net_change")
+    bid: str
+    ask: str
+    high: str
+    low: str
+    open: str
+    low_circuit_limit: str = Field(alias="low_circuit_limit")
+    up_circuit_limit: str = Field(alias="up_circuit_limit")
+    volume: str
     date: str
-    time_to_read: str = Field(alias="timeToRead")
-    premium_story: str = Field(alias="premiumStory")
-    section: str
-    keywords: str
-    url: str
-    thumbnail_image: str = Field(alias="thumbnailimage")
-    list_image: str = Field(alias="listimage")
-    small_image: str = Field(alias="smallimage")
-    big_image: str = Field(alias="bigimage")
-    image_caption: str = Field(alias="imagecaption")
-    image_621x414: str = Field(alias="image_621x414")
-    image_222x148: str = Field(alias="image_222x148")
-    slider_images: List = Field(alias="sliderimages")
-    slider_videos: List = Field(alias="slidervideos")
-    interactives: List
-    body: str
+    time: str
+    close: str
+    bid_size: str = Field(alias="bid_size")
+    ask_size: str = Field(alias="ask_size")
+    exchange_type: str = Field(alias="exchange_type")
+    lot_size: str = Field(alias="lot_size")
+    overall_rating: str = Field(alias="overall_rating")
+    short_term_trends: str = Field(alias="short_term_trends")
+    long_term_trends: str = Field(alias="long_term_trends")
+    total_share_outstanding: str = Field(alias="total_share_outstanding")
+    year_low: str = Field(alias="year_low")
+    year_high: str = Field(alias="year_high")
+    ric: str
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+class TrendingStocks(BaseModel):
+    top_gainers: List[TrendingStock] = Field(default_factory=list)
+    top_losers: List[TrendingStock] = Field(default_factory=list)
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
 
 
 class ISMStockDetailsResponse(BaseModel):
@@ -255,3 +300,11 @@ class ISMStockDetailsResponse(BaseModel):
         populate_by_name = True
         alias_generator = None  # Prevents snake_case conversion
         json_encoders = {}
+        arbitrary_types_allowed = True
+
+class ISMTrendingStocksResponse(BaseModel):
+    trending_stocks: TrendingStocks
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True

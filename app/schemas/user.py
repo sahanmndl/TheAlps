@@ -14,3 +14,4 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     holdings = relationship("Holding", back_populates="user", cascade="all, delete-orphan")
+    investment_preference = relationship("InvestmentPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")

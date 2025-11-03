@@ -6,7 +6,8 @@ from app.models.ism_api.stock import ISMStockDetailsResponse
 from app.models.portfolio_metrics import HoldingMetrics, PortfolioRiskMetrics, PortfolioSummary, SectorAllocation, StockRiskMetrics
 from app.schemas.holding import Holding
 from app.services.ism_api import ISMApi
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
+from asyncio import Semaphore
 
 from app.services.openai_api import OpenAIAPI
 from app.utils.helper_functions import HelperFunctions
@@ -18,11 +19,26 @@ class PortfolioMetrics:
         self.openai_api = openai_api
         self.cache = RedisService()
         self.helper_functions = HelperFunctions(ism_api)
+        self.semaphore = Semaphore(5)  # Limit concurrent API calls
+
+    async def _fetch_single_stock(self, symbol: str) -> Optional[ISMStockDetailsResponse]:
+        async with self.semaphore:  # Control concurrent API calls
+            try:
+                result = await self.ism_api.get_stock_details(symbol)
+                cache_key = f"stock_details:{symbol}"
+                await self.cache.set(cache_key, result.model_dump(by_alias=True), expire_minutes=5)
+                await self.helper_functions.cache_stock_specific_news(result.recent_news, symbol)
+                print(f"Cached stock details for {cache_key}")
+                return result
+            except Exception as e:
+                print(f"Error fetching details for {symbol}: {str(e)}")
+                return None
 
     async def _fetch_stock_details(self, symbols: List[str]) -> Dict[str, ISMStockDetailsResponse]:
         try:
             stock_details_map = {}
             cache_miss_symbols = []
+            retry_attempts = 3
 
             for symbol in symbols:
                 cache_key = f"stock_details:{symbol}"
@@ -34,20 +50,25 @@ class PortfolioMetrics:
                     print(f"Cache miss for {cache_key}")
                     cache_miss_symbols.append(symbol)
 
-            if cache_miss_symbols:
-                tasks = [self.ism_api.get_stock_details(symbol) for symbol in cache_miss_symbols]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-                
+            for attempt in range(retry_attempts):
+                if not cache_miss_symbols:
+                    break
+
+                tasks = [self._fetch_single_stock(symbol) for symbol in cache_miss_symbols]
+                results = await asyncio.gather(*tasks)
+
+                next_retry_symbols = []
                 for symbol, result in zip(cache_miss_symbols, results):
-                    if isinstance(result, Exception):
-                        print(f"Error fetching details for {symbol}: {str(result)}")
-                        continue
-                    
-                    cache_key = f"stock_details:{symbol}"
-                    await self.cache.set(cache_key, result.model_dump(by_alias=True), expire_minutes=5)
-                    await self.helper_functions.cache_stock_specific_news(result.recent_news, symbol)
-                    print(f"Cached stock details for {cache_key}")
-                    stock_details_map[symbol] = result
+                    if result:
+                        stock_details_map[symbol] = result
+                    else:
+                        next_retry_symbols.append(symbol)
+
+                cache_miss_symbols = next_retry_symbols
+
+                if cache_miss_symbols and attempt < retry_attempts - 1:
+                    print(f"Retrying fetch for symbols: {cache_miss_symbols}, attempt {attempt + 1}")
+                    await asyncio.sleep(1 * (attempt + 1))  # Exponential backoff
 
             return stock_details_map
         except Exception as e:

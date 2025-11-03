@@ -21,7 +21,7 @@ class RedisService:
             value = self._redis.get(key)
             return json.loads(value) if value else None
         except Exception as e:
-            print(f"Redis get error: {str(e)}")
+            print(f"Redis get error for {key}: {str(e)}")
             return None
 
     async def set(self, key: str, value: Any, expire_minutes: int = 5) -> bool:
@@ -33,7 +33,7 @@ class RedisService:
                 value=json.dumps(value)
             )
         except Exception as e:
-            print(f"Redis set error: {str(e)}")
+            print(f"Redis set error for {key}: {str(e)}")
             return False
 
     async def delete(self, key: str) -> bool:
@@ -41,7 +41,7 @@ class RedisService:
         try:
             return bool(self._redis.delete(key))
         except Exception as e:
-            print(f"Redis delete error: {str(e)}")
+            print(f"Redis delete error for {key}: {str(e)}")
             return False
 
     async def clear_all(self) -> bool:

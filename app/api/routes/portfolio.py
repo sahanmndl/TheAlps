@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -6,6 +7,7 @@ from app.api.deps import get_current_user
 from app.models.portfolio_metrics import PortfolioMetricsResponse, PortfolioRiskMetricsResponse
 from app.schemas.user import User
 from app.schemas.holding import Holding
+from app.services.investment_advice import InvestmentAdvice
 from app.services.openai_api import OpenAIAPI
 from app.services.portfolio_metrics import PortfolioMetrics
 from app.services.ism_api import ISMApi
@@ -76,3 +78,21 @@ async def analyze_portfolio_risk_genai(db: Session = Depends(get_db), current_us
         return {"analysis": analysis}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing portfolio risk: {str(e)}")
+
+@router.get("/genai/comprehensive-analysis", response_model=dict)
+async def analyze_portfolio_comprehensive_advisory_genai(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        holdings = db.query(Holding).filter(Holding.user_id == current_user.id).all()
+
+        ism_api = ISMApi()
+        openai_api = OpenAIAPI()
+        investment_advice = InvestmentAdvice(db, ism_api, openai_api)
+
+        analysis = await investment_advice.generate_comprehensive_advisory_genai(holdings=holdings, user_id=current_user.id)
+
+        if isinstance(analysis, str):
+            analysis = json.loads(analysis)
+
+        return analysis
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analyzing portfolio comprehensive advisory: {str(e)}")

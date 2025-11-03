@@ -10,6 +10,7 @@ from app.db.base import Base
 from app.schemas.user import User
 from app.schemas.refresh_token import RefreshToken
 from app.schemas.holding import Holding
+from app.schemas.investment_preference import InvestmentPreference
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

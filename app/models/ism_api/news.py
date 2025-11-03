@@ -19,9 +19,20 @@ class ISMNewsArticle(BaseModel):
             return datetime.fromisoformat(v)
         return v
     
+    def model_dump(self, *args, **kwargs):
+        data = super().model_dump(*args, **kwargs)
+        if 'url' in data:
+            data['url'] = str(data['url'])
+        if 'image_url' in data and data['image_url'] is not None:
+            data['image_url'] = str(data['image_url'])
+        if 'pub_date' in data and data['pub_date'] is not None:
+            data['pub_date'] = data['pub_date'].isoformat()
+        return data
+    
     class Config:
         from_attributes = True
         arbitrary_types_allowed = True
         json_encoders = {
-            datetime: lambda dt: dt.isoformat()
+            datetime: lambda dt: dt.isoformat(),
+            HttpUrl: str
         }
