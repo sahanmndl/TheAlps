@@ -5,6 +5,7 @@ import datetime
 class HoldingBase(BaseModel):
     symbol: str = Field(..., example="TCS")
     name: str = Field(..., example="Tata Consultancy Services")
+    isin_number: str = Field(..., example="INE467B01029")
     exchange: Optional[str] = Field(default="NSE")
     shares: int = Field(..., gt=0)
     avg_cost: float = Field(..., gt=0)

@@ -51,8 +51,7 @@ def register(user_in: UserCreate, response: Response, db: Session = Depends(get_
 
     return {
         "user": user,
-        "access_token": access_token,
-        "token_type": "bearer"
+        "access_token": access_token
     }
 
 @router.post("/login", response_model=AuthResponse)
@@ -86,8 +85,7 @@ def login(user_in: LoginRequest, response: Response, db: Session = Depends(get_d
 
     return {
         "user": user,
-        "access_token": access_token,
-        "token_type": "bearer"
+        "access_token": access_token
     }
 
 @router.post("/refresh", response_model=TokenWithRefresh)
@@ -109,8 +107,7 @@ def refresh_token(request: Request, db: Session = Depends(get_db)):
     access_token = create_access_token(subject=str(user.id))
 
     return {
-        "access_token": access_token,
-        "token_type": "bearer"
+        "access_token": access_token
     }
 
 @router.post("/logout", status_code=204)

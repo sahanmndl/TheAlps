@@ -43,7 +43,7 @@ class HelperFunctions:
         if not cached_stock_news and recent_news:
             await self.cache.set(stock_news_cache_key, [news.model_dump(by_alias=True) for news in recent_news], expire_minutes=60)
 
-    async def get_cached_stock_specific_news(self, symbol: str) -> List[RecentNews]:
+    async def get_cached_stock_specific_news(self, symbol: str, isin_number: str) -> List[RecentNews]:
         stock_news_cache_key = f"stock_news:{symbol}"
         cached_recent_news = await self.cache.get(stock_news_cache_key)
         if cached_recent_news:
@@ -60,7 +60,7 @@ class HelperFunctions:
             else:
                 return []
         else:
-            stock_details = await self.ism_api.get_stock_details(symbol)
+            stock_details = await self.ism_api.get_stock_details(isin_number)
             await self.cache.set(stock_cache_key, stock_details.model_dump(by_alias=True), expire_minutes=5)
             stock_recent_news = stock_details.recent_news
             if stock_recent_news:

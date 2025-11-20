@@ -43,7 +43,10 @@ async def analyze_portfolio_genai(db: Session = Depends(get_db), current_user: U
 
         analysis = await portfolio_metrics.analyze_portfolio_genai(holdings=holdings, user_id=current_user.id)
 
-        return {"analysis": analysis}
+        if isinstance(analysis, str):
+            analysis = json.loads(analysis)
+
+        return analysis
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing portfolio: {str(e)}")
 
@@ -75,7 +78,10 @@ async def analyze_portfolio_risk_genai(db: Session = Depends(get_db), current_us
 
         analysis = await portfolio_metrics.analyze_portfolio_risk_genai(holdings=holdings, user_id=current_user.id)
 
-        return {"analysis": analysis}
+        if isinstance(analysis, str):
+            analysis = json.loads(analysis)
+
+        return analysis
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing portfolio risk: {str(e)}")
 

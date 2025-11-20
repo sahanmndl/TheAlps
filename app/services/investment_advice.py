@@ -21,7 +21,7 @@ class InvestmentAdvice:
         self.investment_preferences = InvestmentPreferences(db)
 
     async def _fetch_news_for_holding(self, holding: Holding) -> tuple[str, List[dict]]:
-        stock_news = await self.helper_functions.get_cached_stock_specific_news(holding.symbol)
+        stock_news = await self.helper_functions.get_cached_stock_specific_news(symbol=holding.symbol, isin_number=holding.isin_number)
         if stock_news:
             return holding.symbol, [
                 {

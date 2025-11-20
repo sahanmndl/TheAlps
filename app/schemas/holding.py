@@ -9,6 +9,7 @@ class Holding(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     symbol = Column(String, index=True, nullable=False)
     name = Column(String, nullable=False)
+    isin_number = Column(String, nullable=True)
     exchange = Column(String, nullable=True)    # NSE/BSE
     shares = Column(Integer, nullable=False)
     avg_cost = Column(Float, nullable=False)

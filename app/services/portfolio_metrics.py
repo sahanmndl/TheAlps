@@ -21,20 +21,20 @@ class PortfolioMetrics:
         self.helper_functions = HelperFunctions(ism_api)
         self.semaphore = Semaphore(5)  # Limit concurrent API calls
 
-    async def _fetch_single_stock(self, symbol: str) -> Optional[ISMStockDetailsResponse]:
+    async def _fetch_single_stock(self, symbol: str, isin_number: str) -> Optional[ISMStockDetailsResponse]:
         async with self.semaphore:  # Control concurrent API calls
             try:
-                result = await self.ism_api.get_stock_details(symbol)
+                result = await self.ism_api.get_stock_details(isin_number)
                 cache_key = f"stock_details:{symbol}"
                 await self.cache.set(cache_key, result.model_dump(by_alias=True), expire_minutes=5)
                 await self.helper_functions.cache_stock_specific_news(result.recent_news, symbol)
                 print(f"Cached stock details for {cache_key}")
                 return result
             except Exception as e:
-                print(f"Error fetching details for {symbol}: {str(e)}")
+                print(f"Error fetching details for {symbol} with ISIN {isin_number}: {str(e)}")
                 return None
 
-    async def _fetch_stock_details(self, symbols: List[str]) -> Dict[str, ISMStockDetailsResponse]:
+    async def _fetch_stock_details(self, symbols: List[str], stock_symbols_isin: Dict[str, str]) -> Dict[str, ISMStockDetailsResponse]:
         try:
             stock_details_map = {}
             cache_miss_symbols = []
@@ -54,7 +54,7 @@ class PortfolioMetrics:
                 if not cache_miss_symbols:
                     break
 
-                tasks = [self._fetch_single_stock(symbol) for symbol in cache_miss_symbols]
+                tasks = [self._fetch_single_stock(symbol=symbol, isin_number=stock_symbols_isin[symbol]) for symbol in cache_miss_symbols]
                 results = await asyncio.gather(*tasks)
 
                 next_retry_symbols = []
@@ -89,7 +89,8 @@ class PortfolioMetrics:
                 ), {}
             
             symbols = list({holding.symbol for holding in holdings})
-            stock_details_map = await self._fetch_stock_details(symbols)
+            stock_symbols_isin = {holding.symbol: holding.isin_number for holding in holdings}
+            stock_details_map = await self._fetch_stock_details(symbols, stock_symbols_isin)
 
             holding_metrics_list: List[HoldingMetrics] = []
             total_invested = Decimal('0')
@@ -199,7 +200,12 @@ class PortfolioMetrics:
             pnl is profit and loss
             pct is percentage
 
-            Return in markdown format.
+            Provide the response in the following JSON format. Don't include any explanations outside the JSON structure. ONLY RETURN THE JSON.
+            {{
+                "portfolio_health": "...",
+                "notable_movers": [{{"symbol": "...", "reason": "..."}}, ...],
+                "actionable_insight": "..."
+            }}
             """
 
             briefing = self.openai_api.generate_text(prompt)
@@ -334,7 +340,13 @@ class PortfolioMetrics:
             pnl is profit and loss
             pct is percentage
 
-            Return in markdown format.
+            Provide the response in the following JSON format. Don't include any explanations outside the JSON structure. ONLY RETURN THE JSON.
+            {{
+                "risk_assessment": "...",
+                "risk_concerns": "...",
+                "recommendation": "...",
+                "actionable_step": "..."
+            }}
             """
 
             risk_analysis = self.openai_api.generate_text(prompt)

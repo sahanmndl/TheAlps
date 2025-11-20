@@ -7,7 +7,7 @@ class ISMApi:
     INDIAN_STOCK_MARKET_API_BASE_URL = "https://stock.indianapi.in"
 
     @staticmethod
-    async def get_stock_details(name: str) -> ISMStockDetailsResponse:
+    async def get_stock_details(isin_number: str) -> ISMStockDetailsResponse:
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.get(
@@ -16,7 +16,7 @@ class ISMApi:
                         "x-api-key": settings.INDIAN_STOCK_MARKET_API_KEY
                     },
                     params={
-                        "name": name
+                        "name": isin_number
                     }
                 )
                 response.raise_for_status()
